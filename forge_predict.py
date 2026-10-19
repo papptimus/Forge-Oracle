@@ -21,7 +21,7 @@ How it works (read out of assembly_valheim.dll, Player.GetItemUpgradeChance):
 """
 import argparse, hashlib, re, struct, sys
 M = 0xFFFFFFFF; A = 1812433253
-OK_NAME = re.compile(rb"[A-Za-z0-9 _\-']+")
+OK_NAME = re.compile(r"[A-Za-z0-9 _\-'\u0080-\uffff]+")
 
 def stable_hash(s):
     n = 5381; n2 = n
@@ -74,6 +74,13 @@ def read_slots(p):
             return {u32(p, o + 8 * k): u32(p, o + 8 * k + 4) for k in range(b)}
         except (ValueError, struct.error):
             continue
+    # Fallback for newer saves: seed table is last in player data, preceded by another count+8-byte table
+    for b in range(2001):
+        o = len(p) - 4 - b * 8
+        if o < 8: break
+        if u32(p, o) != b: continue
+        if not any(u32(p, o - 4 - a * 8) == a for a in range(min(2001, (o - 12) // 8 + 1))): continue
+        return {u32(p, o + 4 + 8 * k): u32(p, o + 8 + 8 * k) for k in range(b)}
     return {}
 
 def detect_name(p):
@@ -82,13 +89,16 @@ def detect_name(p):
     for i in range(8, len(p) - 10):
         L = p[i]
         if not 3 <= L <= 20 or i + 1 + L + 8 > len(p): continue
-        s = p[i + 1:i + 1 + L]
+        # Names may hold non-ASCII letters (eg å), stored as UTF-8
+        try: s = p[i + 1:i + 1 + L].decode('utf-8')
+        except UnicodeDecodeError: continue
         if not OK_NAME.fullmatch(s): continue
         for idb in (p[i - 8:i], p[i + 1 + L:i + 9 + L]):
-            if idb[4:] == b'\0\0\0\0' and idb[:4] != b'\0\0\0\0':
+            # Player ID may be negative, so high word is all zero or all 0xFF
+            if idb[4:] in (b'\0\0\0\0', b'\xff\xff\xff\xff') and idb[:4] != b'\0\0\0\0':
                 seen.setdefault((s, idb), []).append(i)
     best = sorted(((len(v), -v[0], k[0]) for k, v in seen.items() if len(v) >= 2), reverse=True)
-    return best[0][2].decode() if best else None
+    return best[0][2] if best else None
 
 def classify(r):
     return 'SUCCESS' if r <= 0.65 else 'FAIL (item breaks)'

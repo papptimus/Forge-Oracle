@@ -28,7 +28,17 @@ On Windows, character files live in:
 
 ```
 %USERPROFILE%\AppData\LocalLow\IronGate\Valheim\characters_local
+C:\Program Files (x86)\Steam\userdata\<Steam ID>\892970\remote\characters   (Steam Cloud saves)
 ```
+
+On Linux (native Steam build):
+
+```
+~/.local/share/Steam/userdata/<Steam ID>/892970/remote/characters   (Steam Cloud saves)
+~/.config/unity3d/IronGate/Valheim/characters_local                  (local saves)
+```
+
+Through Proton, local saves are under `~/.local/share/Steam/steamapps/compatdata/892970/pfx/drive_c/users/steamuser/AppData/LocalLow/IronGate/Valheim/characters_local`. In the file picker, press Ctrl+L to paste a path and Ctrl+H to show hidden folders.
 
 The game writes seeds to the file only when it saves, so quit to the main menu after an attempt before loading the file.
 
