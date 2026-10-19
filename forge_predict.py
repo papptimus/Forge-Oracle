@@ -50,9 +50,9 @@ def load(path):
 
 def read_slots(p):
     if u32(p, 0) < 47: return {}
-    for i in range(len(p) - 12, max(len(p) - 20000, 0), -1):
+    for i in range(len(p) - 12, max(len(p) - 200000, 0), -1):
         L = u32(p, i); end = i + 4 + L
-        if L < 20 or end > len(p) or len(p) - end > 4096: continue
+        if L < 12 or end > len(p) or len(p) - end > 65536: continue
         try:
             cnt = u32(p, i + 4); o = i + 8
             if cnt > 2000: continue
@@ -60,7 +60,14 @@ def read_slots(p):
                 ln = u32(p, o)
                 if ln > 100: raise ValueError
                 o += 4 + ln
-            if o + 8 != end: continue
+            o += 4                      # one u32 (always 0 so far)
+            sc = u32(p, o); o += 4      # crafting stations: name + u32 each
+            if sc > 2000: continue
+            for _ in range(sc):
+                ln = u32(p, o)
+                if ln > 100: raise ValueError
+                o += 8 + ln
+            if o != end: continue
             a = u32(p, end); o = end + 4 + a * 8
             b = u32(p, o); o += 4
             if o + b * 8 != len(p): continue
@@ -84,12 +91,42 @@ def detect_name(p):
     return best[0][2].decode() if best else None
 
 def classify(r):
-    return 'SUCCESS' if r <= 0.55 else 'FAIL (item breaks)' if r >= 0.661 else 'UNCLEAR (near the cutoff)'
+    return 'SUCCESS' if r <= 0.65 else 'FAIL (item breaks)'
 
 ap = argparse.ArgumentParser(description='Predict Forge of Potential upgrades from a Valheim character save.')
 ap.add_argument('--item', required=True); ap.add_argument('--level', type=int, required=True)
 ap.add_argument('--fch'); ap.add_argument('--name'); ap.add_argument('--count', type=int, default=10)
+ap.add_argument('--search', action='store_true', help='search for character names that start the item on a long success streak')
+ap.add_argument('--max-len', type=int, default=4, help='longest name to try when searching (default 4; 5 is slow)')
+ap.add_argument('--names', help='text file with one candidate name per line, used instead of the generated names')
+ap.add_argument('--top', type=int, default=10)
 a = ap.parse_args()
+
+if a.search:
+    import itertools, string
+    ih = stable_hash(a.item)
+    def streak(nm, cap=40):
+        hn = stable_hash(nm); n = 0
+        while n < cap:
+            key = (ih + a.level + 1 + n) & M
+            if roll_and_next((hn + key) & M)[0] > 0.65: break
+            n += 1
+        return n
+    if a.names:
+        cands = (l.strip() for l in open(a.names, encoding='utf-8') if l.strip())
+    else:
+        L = string.ascii_lowercase
+        cands = (c + ''.join(r) for n in range(3, a.max_len + 1) for c in string.ascii_uppercase for r in itertools.product(L, repeat=n - 1))
+    best = []
+    for nm in cands:
+        k = streak(nm)
+        if k >= (best[-1][0] if len(best) >= a.top else 1):
+            best.append((k, nm)); best.sort(key=lambda t: -t[0]); best = best[:a.top]
+    print(f'item={a.item}  starting at level {a.level}: names whose first rolls succeed in a row\n')
+    print('streak  name')
+    for k, nm in best: print(f'{k:>6}  {nm}')
+    print('\nOnly works for a character that has never tried this item at those levels. Untested in game.')
+    sys.exit()
 
 slots = {}; name = a.name
 if a.fch:

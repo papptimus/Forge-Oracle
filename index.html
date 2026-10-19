@@ -32,7 +32,7 @@ h2{font:500 15px var(--disp);letter-spacing:.14em;text-transform:uppercase;color
 .drop strong{font:500 22px var(--disp);display:block}
 .drop span{color:var(--muted);font-size:16px}
 .drop.loaded{padding:16px 20px;text-align:left;display:flex;gap:12px;align-items:center;flex-wrap:wrap;justify-content:space-between}
-.drop.loaded strong{font-size:18px;display:inline}
+.drop.loaded strong{font-size:18px;display:inline;overflow-wrap:anywhere;min-width:0}
 .mono{font-family:var(--mono);font-size:14px}
 main>*{min-width:0}
 .drop .mono{overflow-wrap:anywhere}
@@ -51,6 +51,13 @@ input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid 
 .paths{display:grid;gap:0;margin-top:12px;border-top:1px solid var(--line)}
 .line{display:grid;grid-template-columns:3ch 8ch 1fr auto;gap:12px;align-items:baseline;padding:8px 0;border-bottom:1px solid var(--line);font:15px var(--mono)}
 .line b{font-weight:600}.line small{color:var(--muted);font-size:13px}
+.hist{grid-column:1/-1;font:13px var(--body);color:var(--muted)}
+.hist .offin{width:6ch;display:inline;padding:2px 6px;font:13px var(--mono)}
+.hist .S{color:var(--good)}.hist .F{color:var(--bad)}
+.line.head{border-bottom:1px solid var(--line);padding:4px 0}
+.line.multi{align-items:start}
+.cell b{font-weight:600}.cell small{color:var(--muted);font-size:13px}
+.cell.S b{color:var(--good)}.cell.F b{color:var(--bad)}
 .line.S b{color:var(--good)}.line.F b{color:var(--bad)}.line.M b{color:var(--maybe)}
 .ref{border-top:1px solid var(--line);padding-top:14px}
 .reftools{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
@@ -80,17 +87,18 @@ details p{margin:10px 0;font-size:16px}
 <main>
   <header>
     <h1>Forge Oracle</h1>
-    <p class="lede">Drop in your Valheim character file and see the next Forge of Potential results before you spend an idol. Everything runs in your browser. Your file is never uploaded.</p>
+    <p class="lede">Drop in your Valheim character file, or just type your character name, and see your upcoming Forge of Potential results before you spend an idol. Everything runs in your browser. Your file is never uploaded.</p>
   </header>
 
   <section>
-    <h2>1 &middot; Character file</h2>
+    <h2>1 &middot; Character file (optional)</h2>
     <div class="drop" id="drop" tabindex="0" role="button" aria-label="Choose a character file">
       <strong>Drop your .fch file here</strong>
       <span>or click to browse. Windows path: <span class="mono">%USERPROFILE%\AppData\LocalLow\IronGate\Valheim\characters_local</span></span>
     </div>
     <input type="file" id="file" accept=".fch" hidden>
     <p id="fileStatus" class="status" hidden></p>
+    <p class="note">No save file, for example on console? Skip this step and type your character name below.</p>
   </section>
 
   <section id="slotsSec" hidden>
@@ -109,18 +117,22 @@ details p{margin:10px 0;font-size:16px}
       <label for="level">Current level of the item
         <input id="level" type="number" min="0" max="30" value="3">
       </label>
-      <label for="cname">Character name <span class="note" id="nameHint">(filled in from your save)</span>
-        <input id="cname" autocomplete="off" spellcheck="false" placeholder="read from your save">
+      <label for="copies">Results to show
+        <select id="copies"><option value="1" selected>Next result only</option><option value="2">Next two results</option><option value="3">Next three results</option></select>
+      </label>
+      <label for="cname">Character name <span class="note" id="nameHint">(read from your save if you load one)</span>
+        <input id="cname" autocomplete="off" spellcheck="false" placeholder="your character name">
       </label>
     </div>
     <p class="note">Enter the level your item is now. Names are case sensitive. Use the internal name, not the display name. Not sure of the name? <a href="#ref" id="refLink">Browse item names and IDs</a>.</p>
   </section>
 
   <section id="out" hidden>
-    <h2>3 &middot; Next ten upgrades</h2>
+    <h2>3 &middot; Your upcoming results</h2>
     <p class="summary" id="summary"></p>
     <p class="note" id="source"></p>
     <div class="paths" id="paths"></div>
+    <p class="note" id="multiNote" hidden>Each column is the next unused result on that step. The first item to reach a step uses the 1st result, the next item to reach it uses the 2nd, and so on. A step that no earlier item has reached is still on its 1st result.</p>
     <div class="legend">
       <span><b style="color:var(--good)">Success</b> roll of 0.65 or less</span>
       <span><b style="color:var(--bad)">Fail</b> roll above 0.65 (the item breaks)</span>
@@ -129,7 +141,7 @@ details p{margin:10px 0;font-size:16px}
 
     <details class="finder" id="finder">
     <summary>Find a starting name (experimental)</summary>
-    <p class="note">For a brand-new character, the first roll for an item and level comes from the character name. This searches for names whose first rolls succeed several levels in a row for the item and level entered above. It only helps a character that has never tried that item at those levels. Not yet tested in game.</p>
+    <p class="note">For a brand-new character, the first roll for an item and level comes from the character name. This searches for names whose first rolls succeed several levels in a row for the item and level entered above. It only helps a character that has never tried that item at those levels. Not yet tested in game. The new character also has to craft one of the item before it can upgrade it.</p>
     <div class="row">
       <label for="fmax">Name length to try
         <select id="fmax"><option value="4" selected>3 to 4 letters (about 2 seconds)</option><option value="3">3 letters only (instant)</option><option value="5">3 to 5 letters (slow)</option></select>
@@ -137,7 +149,7 @@ details p{margin:10px 0;font-size:16px}
     </div>
     <p><button class="go" id="fgo" type="button">Search names</button> <span class="note" id="fprog"></span></p>
     <div class="paths" id="fres"></div>
-    <p class="note" id="fnote" hidden>Tap a name to enter it above and see its next ten upgrades. Check the game accepts the name when you create the character.</p>
+    <p class="note" id="fnote" hidden>Tap a name to enter it above and see its upcoming results. Check the game accepts the name when you create the character.</p>
   </details>
 
     <details class="ref" id="ref">
@@ -152,9 +164,10 @@ details p{margin:10px 0;font-size:16px}
 
   <details>
     <summary>How this works</summary>
-    <p>Each item and target level has its own saved seed in your character file. An attempt turns that seed into one roll between 0 and 1, then stores a new seed. Reloading cannot change the outcome, so the next results can be read ahead of time.</p>
-    <p>Seeds are written only when the game saves, so quit to the main menu after any attempt before dropping the file here. Predictions were checked against 14 real attempts on Valheim 1.0.20. An upgrade succeeds when the roll is 0.65 or less. That value, and the fact that every failure destroys the item, comes from the game data as read by <a href="https://github.com/Melichor/ValheimSaveParser" target="_blank" rel="noopener noreferrer">Melichor's ValheimSaveParser</a>, and it fits every attempt we recorded.</p>
-    <p>Each row is one upgrade step for a single item. Row 1 takes it from its current level up one, row 2 takes it up another, and so on. Each level has its own saved seed, so each row uses the next roll for that level. The rows after the first assume every earlier step succeeded, because a failure breaks the item. If a step breaks it, the rows after it do not apply to that item.</p>
+    <p>Each item and target level has its own list of results. The list is fixed in advance by a starting seed, which comes from the character name, the item and the level. Every attempt on that step uses the next unused result, whether it succeeds or fails, and the game saves its place in the character file. Reloading cannot change a result, so the next ones can be read ahead of time.</p>
+    <p>An upgrade succeeds when the roll is 0.65 or less, and a failure destroys the item. That value comes from the game data as read by <a href="https://github.com/Melichor/ValheimSaveParser" target="_blank" rel="noopener noreferrer">Melichor's ValheimSaveParser</a>, and it fits all 26 attempts we recorded on Valheim 1.0.20: 14 hammer attempts, and 12 on three copies of the same chest.</p>
+    <p>The list belongs to the item type and level, not to one copy. A second copy of the same item uses the next unused result on each step the first copy reached, and the 1st result on steps it did not reach. Use "Results to show" to see the 2nd and 3rd results side by side. Rows after the first assume every earlier step succeeded, because a failure breaks the item.</p>
+    <p>With a save loaded, the page reads each step's place from the file, so quit to the main menu after any attempt, because the game only writes seeds when it saves. Without a save, for example on console, every step starts from the character name, so enter how many attempts the character has already made on each step. The name has to match exactly, including capitals. This has been tested on PC saves only.</p>
   </details>
 </main>
 
@@ -177,13 +190,17 @@ details p{margin:10px 0;font-size:16px}
     var res={version:ver,slots:{},hashOk:null};
     if(ver<47){res.old=true;return res;}
     var end0=4+n,i,L,end,o,cnt,k,ln,a,b;
-    for(i=end0-12;i>Math.max(end0-20000,4);i--){
+    for(i=end0-12;i>Math.max(end0-200000,4);i--){
       L=dv.getUint32(i,true);end=i+4+L;
-      if(L<20||end>end0||end0-end>4096)continue;
+      if(L<12||end>end0||end0-end>65536)continue;
       cnt=dv.getUint32(i+4,true);if(cnt>2000)continue;
       o=i+8;var ok=true;
       for(k=0;k<cnt;k++){if(o+4>end0){ok=false;break;}ln=dv.getUint32(o,true);if(ln>100){ok=false;break;}o+=4+ln;}
-      if(!ok||o+8!==end)continue;
+      if(!ok||o+8>end)continue;
+      var sc=dv.getUint32(o+4,true);o+=8;
+      if(sc>2000)continue;
+      for(k=0;k<sc&&ok;k++){if(o+4>end){ok=false;break;}ln=dv.getUint32(o,true);if(ln>100){ok=false;break;}o+=8+ln;}
+      if(!ok||o!==end)continue;
       a=dv.getUint32(end,true);o=end+4+a*8;if(o+4>end0)continue;
       b=dv.getUint32(o,true);o+=4;
       if(o+b*8!==end0)continue;
@@ -217,7 +234,7 @@ details p{margin:10px 0;font-size:16px}
   var NAME={},ALL=[];
   Object.keys(ITEMDATA).forEach(function(g){ITEMDATA[g].forEach(function(p){NAME[p[1]]=p[0];ALL.push({g:g,n:p[0],i:p[1]});});});
   var dl=$("items");ALL.forEach(function(x){var o=document.createElement("option");o.value=x.i;o.label=x.n;dl.appendChild(o);});
-  var known={};ALL.forEach(function(x){for(var l=1;l<=30;l++)known[(hash(x.i)+l)>>>0]={item:x.i,level:l};});
+  var known={};ALL.forEach(function(x){for(var l=1;l<=20;l++)known[(hash(x.i)+l)>>>0]={item:x.i,level:l};});
   var refGroup="All";
   function renderRef(){
     var q=$("refq").value.trim().toLowerCase(),box=$("reflist");box.innerHTML="";
@@ -254,8 +271,9 @@ details p{margin:10px 0;font-size:16px}
       var d=$("drop");d.classList.add("loaded");
       d.innerHTML="<strong></strong><span class='mono'></span>";
       d.firstChild.textContent=f.name;d.lastChild.textContent="save version "+saved.version+" · click to replace";
-      if(saved.old){status("This save is from before the Forge seeds were stored (version "+saved.version+"). Predictions will start from the character's initial seeds.",true);}
-      else if(!saved.found){status("Could not find the Forge seed table in this file. The format may have changed in a newer patch.",true);}
+      if(saved.old){status("This save is from before the Forge seeds were stored (version "+saved.version+"). Results will start from the character name.",true);}
+      else if(!saved.found){status("Could not read the Forge seeds from this file (save version "+saved.version+"). Its layout is not one this page knows. You can still type the character name below.",true);}
+      else if(saved.count===0){status("No Forge seeds are stored in this save yet, so this character has not used the Forge. Results start from the character name.",false);}
       else{status(saved.count+" Forge seed"+(saved.count===1?"":"s")+" found in the save.",false);}
       if(window.crypto&&crypto.subtle){
         var dvv=new DataView(buf),n=dvv.getUint32(0,true);
@@ -285,43 +303,103 @@ details p{margin:10px 0;font-size:16px}
       btn.onclick=function(){$("item").value=m.item;$("level").value=m.level-1;run();};
       box.appendChild(btn);
     });
-    $("slotsNote").textContent=keys.length===0?"No Forge attempts are stored in this save yet. Predictions start from the character's initial seeds.":
-      unknown?unknown+" more seed"+(unknown===1?"":"s")+" belong to items outside the built-in list. Type their internal name below to see them.":"";
+    $("slotsNote").textContent=keys.length===0?"No Forge attempts are stored in this save yet. Results start from the character name.":
+      unknown?unknown+" more seed"+(unknown===1?" belongs":"s belong")+" to items outside the built-in list. Type their internal name below to see them.":"";
     sec.hidden=false;
   }
 
   var rl=$("refLink");if(rl)rl.addEventListener("click",function(e){e.preventDefault();$("ref").open=true;$("ref").scrollIntoView({block:"start"});});
   function classify(r){return r<=0.65?"S":"F";}
   var LABEL={S:"Success",F:"Fail"};
+  var offs={},lastFocus=null;
+
+  function history(name,key,savedSeed){
+    var s=(hash(name)+key)>>>0,target=savedSeed>>>0,used=[],i,r;
+    for(i=0;i<500;i++){
+      if(s===target)return used;
+      r=rollNext(s);used.push(classify(r.roll));s=r.next;
+    }
+    return null;
+  }
+  function nthRoll(seed,k){var s=seed,j;for(j=1;j<k;j++){s=rollNext(s).next;}return rollNext(s);}
 
   function run(){
     var item=$("item").value.trim(),cur=parseInt($("level").value,10),out=$("out");
+    var K=Math.max(1,Math.min(3,parseInt($("copies").value,10)||1));
     if(!item||isNaN(cur)||cur<0){out.hidden=true;return;}
-    var nm=$("cname").value.trim(),rows=[],from={},needName=false,n,lv,key,seed,r;
+    var nm=$("cname").value.trim(),rows=[],from={},needName=false,n,lv,key,seed,r,k,res,hist,histFail=false,off=0,j;
     for(n=1;n<=10;n++){
-      lv=cur+n;key=(hash(item)+lv)>>>0;
-      if(saved&&saved.found&&Object.prototype.hasOwnProperty.call(saved.slots,key)){seed=saved.slots[key];from[lv]="save";}
-      else if(nm){seed=(hash(nm)+key)>>>0;from[lv]="fresh";}
+      lv=cur+n;key=(hash(item)+lv)>>>0;hist=undefined;off=0;
+      if(saved&&saved.found&&Object.prototype.hasOwnProperty.call(saved.slots,key)){seed=saved.slots[key];from[lv]="save";hist=nm?history(nm,key,seed):undefined;}
+      else if(nm){off=offs[item+"|"+lv]||0;seed=(hash(nm)+key)>>>0;hist=[];for(j=0;j<off;j++){r=rollNext(seed);hist.push(classify(r.roll));seed=r.next;}from[lv]="fresh";}
       else{needName=true;break;}
-      r=rollNext(seed);rows.push({n:n,a:lv-1,b:lv,roll:r.roll,c:classify(r.roll)});
+      res=[];for(k=1;k<=K;k++){r=nthRoll(seed,k);res.push({roll:r.roll,c:classify(r.roll)});}
+      if(hist===null)histFail=true;
+      rows.push({n:n,a:lv-1,b:lv,roll:res[0].roll,c:res[0].c,res:res,hist:hist,fresh:from[lv]==="fresh",off:off});
     }
     out.hidden=false;
     var box=$("paths");box.innerHTML="";
+    $("multiNote").hidden=K===1;
     if(needName){
       $("summary").textContent="Enter your character name";
       $("source").textContent="Some of these levels have no stored seed yet, so their first roll comes from your character name.";
       return;
     }
     var fr=Object.keys(from).filter(function(l){return from[l]==="fresh";}).length;
-    $("source").textContent=fr?"Levels not yet attempted start from your character name. The rest come from your save.":"All of these levels were read from your save.";
+    $("source").textContent=!(saved&&saved.found)?"These results start from your character name. If this character has already tried a step, enter how many attempts it has made on that step.":fr?"Steps with no saved attempts start from your character name. If you have attempted one since you saved, enter how many. The rest come from your save.":"All of these steps were read from your save.";
+    if(histFail)$("source").textContent+=" The used-so-far history could not be matched to this character name, so it is not shown.";
+    if(K>1){
+      var hd=document.createElement("div");hd.className="line head";hd.style.gridTemplateColumns="3ch 8ch repeat("+K+",1fr)";
+      hd.appendChild(document.createElement("span"));hd.appendChild(document.createElement("span"));
+      ["1st","2nd","3rd"].slice(0,K).forEach(function(t){var h=document.createElement("small");h.textContent=t+" result";hd.appendChild(h);});
+      box.appendChild(hd);
+    }
     rows.forEach(function(x){
-      var li=document.createElement("div");li.className="line "+x.c;
+      var li=document.createElement("div");li.className="line "+(K===1?x.c:"multi");
       var a=document.createElement("span");a.textContent=x.n;
       var lvl=document.createElement("span");lvl.textContent=x.a+" → "+x.b;
-      var b=document.createElement("b");b.textContent=LABEL[x.c];
-      var m=document.createElement("small");m.textContent="roll "+x.roll.toFixed(4);
-      li.appendChild(a);li.appendChild(lvl);li.appendChild(b);li.appendChild(m);box.appendChild(li);
+      li.appendChild(a);li.appendChild(lvl);
+      if(K===1){
+        var b=document.createElement("b");b.textContent=LABEL[x.c];
+        var m=document.createElement("small");m.textContent="roll "+x.roll.toFixed(4);
+        li.appendChild(b);li.appendChild(m);
+      }else{
+        li.style.gridTemplateColumns="3ch 8ch repeat("+K+",1fr)";
+        x.res.forEach(function(q){
+          var cell=document.createElement("div");cell.className="cell "+q.c;
+          var b2=document.createElement("b");b2.textContent=LABEL[q.c];
+          var m2=document.createElement("small");m2.textContent=q.roll.toFixed(4);
+          cell.appendChild(b2);cell.appendChild(document.createElement("br"));cell.appendChild(m2);li.appendChild(cell);
+        });
+      }
+      if(x.fresh){
+        var fl=document.createElement("div");fl.className="hist";
+        fl.appendChild(document.createTextNode("Earlier attempts on this step: "));
+        var inp=document.createElement("input");inp.type="number";inp.min="0";inp.max="99";inp.value=x.off;inp.className="offin";
+        inp.setAttribute("data-lv",x.b);inp.setAttribute("aria-label","Earlier attempts on step "+x.a+" to "+x.b);
+        inp.addEventListener("change",function(){var v=parseInt(inp.value,10);offs[item+"|"+x.b]=(isNaN(v)||v<0)?0:Math.min(v,99);lastFocus=x.b;run();});
+        fl.appendChild(inp);
+        if(x.hist&&x.hist.length){
+          fl.appendChild(document.createTextNode(" Their results: "));
+          x.hist.forEach(function(c,i){
+            if(i)fl.appendChild(document.createTextNode(", "));
+            var sp=document.createElement("span");sp.className=c;sp.textContent=LABEL[c];fl.appendChild(sp);
+          });
+        }
+        li.appendChild(fl);
+      }else if(x.hist&&x.hist.length){
+        var hl=document.createElement("div");hl.className="hist";
+        hl.appendChild(document.createTextNode("Attempt "+(x.hist.length+1)+" on this step. Already used: "));
+        x.hist.forEach(function(c,i){
+          if(i)hl.appendChild(document.createTextNode(", "));
+          var sp=document.createElement("span");sp.className=c;sp.textContent=LABEL[c];hl.appendChild(sp);
+        });
+        li.appendChild(hl);
+      }
+      box.appendChild(li);
     });
+    if(lastFocus!==null){var fe=document.querySelector('input.offin[data-lv="'+lastFocus+'"]');if(fe)fe.focus();lastFocus=null;}
+    if(K>1){$("summary").textContent="Results for the next "+K+" attempts on each step.";return;}
     var stop=rows.find(function(x){return x.c!=="S";}),sum;
     if(!stop)sum="Every one of these ten upgrades succeeds, taking the item from level "+cur+" to "+(cur+10)+".";
     else if(stop.n===1)sum="The first upgrade fails and breaks the item.";
@@ -374,7 +452,7 @@ details p{margin:10px 0;font-size:16px}
     tick();
   }
   $("fgo").addEventListener("click",finder);
-  ["item","level","cname"].forEach(function(id){$(id).addEventListener("input",run);});
+  ["item","level","cname","copies"].forEach(function(id){$(id).addEventListener("input",run);});
   run();
 })();
 </script>
