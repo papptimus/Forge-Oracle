@@ -17,8 +17,7 @@ Open `index.html` (or the hosted page, if you publish one).
 ### Reading the results
 
 - **Results to show.** The default shows the next result for each step. Choose "Next two results" or "Next three results" to see the 2nd and 3rd side by side. A step's results belong to the item type, not to one copy, so a second copy of the same item uses the next unused result on each step the first copy reached, and the 1st result on steps it did not reach.
-- **Used so far.** With a save loaded, a step that has already been attempted shows its attempt number and the results already used, for example "Attempt 2 on this step. Already used: Fail". The page works this out by counting forward from the character name until it reaches the seed stored in the save. If the name is wrong it says so and leaves the history out.
-- **Earlier attempts (no save needed).** Without a save, for example on console, every step starts from the character name. Each step has an "Earlier attempts on this step" box. Enter how many attempts the character has already made there and the page skips that many results and shows what they would have been, so you can compare with what you remember. The name has to match exactly, including capitals. This has been tested on PC saves only.
+- **Earlier attempts (no save needed).** Without a save, for example on console, every step starts from the character name. Each step has an "Earlier attempts on this step" box. Enter how many attempts the character has already made there and the page skips that many results. The name has to match exactly, including capitals. This has been tested on PC saves only.
 
 The page also has an "Item names and IDs" list with search. Tap an item to fill in its internal name, and an experimental "Find a starting name" section (see below).
 
@@ -30,7 +29,7 @@ On Windows, character files live in:
 %USERPROFILE%\AppData\LocalLow\IronGate\Valheim\characters_local
 ```
 
-The game writes seeds to the file only when it saves, so quit to the main menu after an attempt before loading the file.
+The game writes seeds to the file only when it saves, so quit to the main menu after an attempt before loading the file. Valheim can keep more than one copy of a character (`characters_local`, a Steam Cloud `characters` folder, and `.old` backups), so make sure the file you load is the one the game last wrote. If the page says no Forge seeds are stored but you have used the Forge, it is almost always the wrong or an older copy. Forge use on a multiplayer server has not been tested.
 
 ## Use it from the command line
 
@@ -105,7 +104,7 @@ The page has the same search under "Find a starting name". It tries every capita
 [u32 payloadLength][payload][u32 64][SHA-512 of payload]
 ```
 
-Near the end of the payload is the build-menu blob: a list of known build pieces, then one u32, then a list of known crafting stations (name plus a u32 each; empty on a character that has not used any, which is why the first saves tested did not show it). After it come two lists. The second is the Forge seed list: a count followed by `(u32 key, u32 seed)` pairs. The first is a separate list of drop counters, which the Forge does not use.
+Near the end of the payload is the build-menu blob (the game's `BuildUi.SaveToBinary`): the recent build pieces, then the favorites, which are the pieces you star, each with an optional list of tags. A character with no favorites has an empty favorites list, which is why the first saves tested did not show this. After it come two lists. The second is the Forge seed list: a count followed by `(u32 key, u32 seed)` pairs. The first is a separate list of drop counters, which the Forge does not use.
 
 ## What is verified
 
@@ -114,6 +113,7 @@ Near the end of the payload is the build-menu blob: a list of known build pieces
 - [ValheimSaveParser](https://github.com/Melichor/ValheimSaveParser) reads the same mechanics independently, including the 0.65 chance and the starting seed from the character name.
 - Three copies of the same chest (`ArmorDeepNorthMediumChest`, level 6) were upgraded one after another. They broke at steps 4, 6 and 2, exactly as the shared results predicted (12 attempts).
 - Entering the earlier attempts by hand, with no save loaded, gives the same results as loading the save.
+- A second player's character (not ours) had one stored seed after a single Forge attempt. Starting from `hash(character name) + key` and taking one step gives exactly that stored seed, with a roll of 0.5326 (a success). This confirms the name-based start on a character we did not play.
 - The key and seed layout match the game's decompiled `Player.GetItemUpgradeChance`.
 - The character name detection returned the right name on every save tested.
 
@@ -126,7 +126,7 @@ Near the end of the payload is the build-menu blob: a list of known build pieces
 - Without a save, results are only right for steps the character has not attempted beyond the number you enter.
 - Seeds that do not match a built-in item (levels 1 to 20) are counted as "outside the built-in list", and you can type their internal name to look at them.
 - The name search and the character-trading idea follow from the game code but have not been tested in game.
-- The page finds the seed table by matching the layout at the end of the file, not by reading the whole file. A character with an unusual layout, for example from a mod, may still be rejected; the page then names the save version. The crafting-station list was missed at first and fixed after a user's save showed it (tested on 36 version-47 saves).
+- The page finds the seed table by matching the layout at the end of the file, not by reading the whole file. A character with an unusual layout, for example from a mod, may still be rejected; the page then names the save version. The favorites part of the build-menu blob was missed at first and fixed after a user's save showed it (tested on 38 version-47 saves, plus a synthetic save with tagged favorites).
 - A game patch can change the math or the save format.
 
 If a prediction ever misses, open an issue with the save from before the attempt, the save from after it, and what happened.

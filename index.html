@@ -196,11 +196,15 @@ details p{margin:10px 0;font-size:16px}
       cnt=dv.getUint32(i+4,true);if(cnt>2000)continue;
       o=i+8;var ok=true;
       for(k=0;k<cnt;k++){if(o+4>end0){ok=false;break;}ln=dv.getUint32(o,true);if(ln>100){ok=false;break;}o+=4+ln;}
-      if(!ok||o+8>end)continue;
-      var sc=dv.getUint32(o+4,true);o+=8;
-      if(sc>2000)continue;
-      for(k=0;k<sc&&ok;k++){if(o+4>end){ok=false;break;}ln=dv.getUint32(o,true);if(ln>100){ok=false;break;}o+=8+ln;}
-      if(!ok||o!==end)continue;
+      if(!ok)continue;
+      var strs=function(p){var n,q,l;if(p+4>end)return -1;n=dv.getUint32(p,true);if(n>5000)return -1;p+=4;
+        for(q=0;q<n;q++){if(p+4>end)return -1;l=dv.getUint32(p,true);if(l>200||p+4+l>end)return -1;p+=4+l;}return p;};
+      o=strs(o);if(o<0)continue;
+      if(o+4>end)continue;
+      var fc=dv.getUint32(o,true);o+=4;
+      if(fc>5000)continue;
+      for(k=0;k<fc&&o>=0;k++){if(o+4>end){o=-1;break;}ln=dv.getUint32(o,true);if(ln>200){o=-1;break;}o=strs(o+4+ln);}
+      if(o!==end)continue;
       a=dv.getUint32(end,true);o=end+4+a*8;if(o+4>end0)continue;
       b=dv.getUint32(o,true);o+=4;
       if(o+b*8!==end0)continue;
@@ -273,7 +277,7 @@ details p{margin:10px 0;font-size:16px}
       d.firstChild.textContent=f.name;d.lastChild.textContent="save version "+saved.version+" · click to replace";
       if(saved.old){status("This save is from before the Forge seeds were stored (version "+saved.version+"). Results will start from the character name.",true);}
       else if(!saved.found){status("Could not read the Forge seeds from this file (save version "+saved.version+"). Its layout is not one this page knows. You can still type the character name below.",true);}
-      else if(saved.count===0){status("No Forge seeds are stored in this save yet, so this character has not used the Forge. Results start from the character name.",false);}
+      else if(saved.count===0){status("No Forge seeds are stored in this file. If this character has already used the Forge, this may be an older copy of the save, or the game has not saved since. The results below start from the character name, so they are only right for a character that has not used the Forge.",false);}
       else{status(saved.count+" Forge seed"+(saved.count===1?"":"s")+" found in the save.",false);}
       if(window.crypto&&crypto.subtle){
         var dvv=new DataView(buf),n=dvv.getUint32(0,true);
@@ -331,7 +335,7 @@ details p{margin:10px 0;font-size:16px}
     for(n=1;n<=10;n++){
       lv=cur+n;key=(hash(item)+lv)>>>0;hist=undefined;off=0;
       if(saved&&saved.found&&Object.prototype.hasOwnProperty.call(saved.slots,key)){seed=saved.slots[key];from[lv]="save";hist=nm?history(nm,key,seed):undefined;}
-      else if(nm){off=offs[item+"|"+lv]||0;seed=(hash(nm)+key)>>>0;hist=[];for(j=0;j<off;j++){r=rollNext(seed);hist.push(classify(r.roll));seed=r.next;}from[lv]="fresh";}
+      else if(nm){off=(saved&&saved.found)?0:(offs[item+"|"+lv]||0);seed=(hash(nm)+key)>>>0;hist=[];for(j=0;j<off;j++){r=rollNext(seed);hist.push(classify(r.roll));seed=r.next;}from[lv]="fresh";}
       else{needName=true;break;}
       res=[];for(k=1;k<=K;k++){r=nthRoll(seed,k);res.push({roll:r.roll,c:classify(r.roll)});}
       if(hist===null)histFail=true;
@@ -346,8 +350,7 @@ details p{margin:10px 0;font-size:16px}
       return;
     }
     var fr=Object.keys(from).filter(function(l){return from[l]==="fresh";}).length;
-    $("source").textContent=!(saved&&saved.found)?"These results start from your character name. If this character has already tried a step, enter how many attempts it has made on that step.":fr?"Steps with no saved attempts start from your character name. If you have attempted one since you saved, enter how many. The rest come from your save.":"All of these steps were read from your save.";
-    if(histFail)$("source").textContent+=" The used-so-far history could not be matched to this character name, so it is not shown.";
+    $("source").textContent=!(saved&&saved.found)?"These results start from your character name. If this character has already tried a step, enter how many attempts it has made on that step.":fr?"Steps with no saved attempts start from your character name. The rest come from your save.":"All of these steps were read from your save.";
     if(K>1){
       var hd=document.createElement("div");hd.className="line head";hd.style.gridTemplateColumns="3ch 8ch repeat("+K+",1fr)";
       hd.appendChild(document.createElement("span"));hd.appendChild(document.createElement("span"));
@@ -372,29 +375,14 @@ details p{margin:10px 0;font-size:16px}
           cell.appendChild(b2);cell.appendChild(document.createElement("br"));cell.appendChild(m2);li.appendChild(cell);
         });
       }
-      if(x.fresh){
+      if(x.fresh&&!(saved&&saved.found)){
         var fl=document.createElement("div");fl.className="hist";
         fl.appendChild(document.createTextNode("Earlier attempts on this step: "));
         var inp=document.createElement("input");inp.type="number";inp.min="0";inp.max="99";inp.value=x.off;inp.className="offin";
         inp.setAttribute("data-lv",x.b);inp.setAttribute("aria-label","Earlier attempts on step "+x.a+" to "+x.b);
         inp.addEventListener("change",function(){var v=parseInt(inp.value,10);offs[item+"|"+x.b]=(isNaN(v)||v<0)?0:Math.min(v,99);lastFocus=x.b;run();});
         fl.appendChild(inp);
-        if(x.hist&&x.hist.length){
-          fl.appendChild(document.createTextNode(" Their results: "));
-          x.hist.forEach(function(c,i){
-            if(i)fl.appendChild(document.createTextNode(", "));
-            var sp=document.createElement("span");sp.className=c;sp.textContent=LABEL[c];fl.appendChild(sp);
-          });
-        }
         li.appendChild(fl);
-      }else if(x.hist&&x.hist.length){
-        var hl=document.createElement("div");hl.className="hist";
-        hl.appendChild(document.createTextNode("Attempt "+(x.hist.length+1)+" on this step. Already used: "));
-        x.hist.forEach(function(c,i){
-          if(i)hl.appendChild(document.createTextNode(", "));
-          var sp=document.createElement("span");sp.className=c;sp.textContent=LABEL[c];hl.appendChild(sp);
-        });
-        li.appendChild(hl);
       }
       box.appendChild(li);
     });
