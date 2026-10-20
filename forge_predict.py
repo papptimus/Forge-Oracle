@@ -60,13 +60,21 @@ def read_slots(p):
                 ln = u32(p, o)
                 if ln > 100: raise ValueError
                 o += 4 + ln
-            o += 4                      # one u32 (always 0 so far)
-            sc = u32(p, o); o += 4      # crafting stations: name + u32 each
-            if sc > 2000: continue
-            for _ in range(sc):
+            def strs(o):
+                n = u32(p, o); o += 4
+                if n > 5000: raise ValueError
+                for _ in range(n):
+                    ln = u32(p, o)
+                    if ln > 200 or o + 4 + ln > end: raise ValueError
+                    o += 4 + ln
+                return o
+            o = strs(o)                 # favorite-piece tags
+            d = u32(p, o); o += 4       # favorite pieces: name + its tag list
+            if d > 5000: continue
+            for _ in range(d):
                 ln = u32(p, o)
-                if ln > 100: raise ValueError
-                o += 8 + ln
+                if ln > 200: raise ValueError
+                o = strs(o + 4 + ln)
             if o != end: continue
             a = u32(p, end); o = end + 4 + a * 8
             b = u32(p, o); o += 4

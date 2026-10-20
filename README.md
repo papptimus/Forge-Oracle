@@ -141,4 +141,4 @@ If a prediction ever misses, open an issue with the save from before the attempt
 
 ## License
 
-Add a license before publishing, for example MIT.
+MIT. See [LICENSE](LICENSE).
