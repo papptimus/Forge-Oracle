@@ -96,7 +96,7 @@ The page has the same search under "Find a starting name". It tries every capita
 - It only helps a character that has never tried that item at those levels. After an attempt, the saved seed takes over from the name.
 - The new character has to craft one of that item before it can upgrade it (see the trading section above), so it only suits items the character can make. Crafting does not touch the seeds: in the game code only the save, the load and the upgrade roll use the seed table.
 - It only looks at the first roll per level. It does not model failing on purpose to advance a queue, which [ValheimSaveParser](https://github.com/Melichor/ValheimSaveParser) covers.
-- Patch 1.0.21 added rules limiting which names a new character can have, reported by Melichor to affect case; the Forge itself was not changed. A name found here may no longer be creatable. This has not been tested in game, and it has not been checked which names the game accepts. If you try one, please open an issue with the result.
+- Patch 1.0.21 added rules limiting which names a new character can have, reported after the patch to affect case; the Forge itself was not changed. A name found here may no longer be creatable. This has not been tested in game, and it has not been checked which names the game accepts. If you try one, please open an issue with the result.
 
 ### Save format (version 47, games 1.0.20 and 1.0.21)
 
@@ -132,7 +132,7 @@ Near the end of the payload is the build-menu blob (the game's `BuildUi.SaveToBi
 - The page finds the seed table by matching the layout at the end of the file, not by reading the whole file. A character with an unusual layout, for example from a mod, may still be rejected; the page then names the save version. The favorites part of the build-menu blob was missed at first and fixed after a user's save showed it (tested on 38 version-47 saves, plus a synthetic save with tagged favorites).
 - A game patch can change the math or the save format.
 
-If a prediction ever misses, open an issue with the save from before the attempt, the save from after it, and what happened.
+If a prediction ever misses, open an issue with the save from before the attempt, the save from after it, and what happened. You can also email forge.oracle.support@gmail.com.
 
 ## Files
 
