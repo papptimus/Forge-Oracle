@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Predict Valheim 1.0.20 Forge of Potential upgrades from a character save.
+"""Predict Valheim 1.0.20 and 1.0.21 Forge of Potential upgrades from a character save.
 
 Usage:
   python forge_predict.py --item Hammer --level 3 --fch Yleinen.fch
@@ -21,7 +21,7 @@ How it works (read out of assembly_valheim.dll, Player.GetItemUpgradeChance):
 """
 import argparse, hashlib, re, struct, sys
 M = 0xFFFFFFFF; A = 1812433253
-OK_NAME = re.compile(rb"[A-Za-z0-9 _\-']+")
+OK_NAME = re.compile(r"[\w _\-']+")
 
 def stable_hash(s):
     n = 5381; n2 = n
@@ -90,13 +90,14 @@ def detect_name(p):
     for i in range(8, len(p) - 10):
         L = p[i]
         if not 3 <= L <= 20 or i + 1 + L + 8 > len(p): continue
-        s = p[i + 1:i + 1 + L]
+        try: s = p[i + 1:i + 1 + L].decode('utf-8')   # names can contain letters like ø or ä
+        except UnicodeDecodeError: continue
         if not OK_NAME.fullmatch(s): continue
         for idb in (p[i - 8:i], p[i + 1 + L:i + 9 + L]):
             if idb[4:] == b'\0\0\0\0' and idb[:4] != b'\0\0\0\0':
                 seen.setdefault((s, idb), []).append(i)
     best = sorted(((len(v), -v[0], k[0]) for k, v in seen.items() if len(v) >= 2), reverse=True)
-    return best[0][2].decode() if best else None
+    return best[0][2] if best else None
 
 def classify(r):
     return 'SUCCESS' if r <= 0.65 else 'FAIL (item breaks)'

@@ -218,8 +218,10 @@ details p{margin:10px 0;font-size:16px}
     for(i=12;i<end-10;i++){
       L=u[i];if(L<3||L>20||i+1+L+8>end)continue;
       ok=true;name="";
-      for(j=0;j<L;j++){c=u[i+1+j];if(!((c>=48&&c<=57)||(c>=65&&c<=90)||(c>=97&&c<=122)||c===32||c===95||c===45||c===39)){ok=false;break;}name+=String.fromCharCode(c);}
+      for(j=0;j<L;j++){c=u[i+1+j];if(!(c>=128||(c>=48&&c<=57)||(c>=65&&c<=90)||(c>=97&&c<=122)||c===32||c===95||c===45||c===39)){ok=false;break;}}
       if(!ok)continue;
+      try{name=new TextDecoder("utf-8",{fatal:true}).decode(u.subarray(i+1,i+1+L));}catch(e){continue;}
+      if(!/^[\p{L}\p{N} _\-']+$/u.test(name))continue;
       sides=[i-8,i+1+L];
       for(s=0;s<2;s++){
         a=sides[s];

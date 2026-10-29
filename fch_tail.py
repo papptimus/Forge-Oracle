@@ -2,7 +2,7 @@
 """Show the new end-of-player-data fields in Valheim .fch files (character version 47+).
 Usage: python3 fch_tail.py save1.fch [save2.fch ...]
 
-Layout (inferred from samples, not documented by Iron Gate):
+Layout (inferred from samples, not documented by Iron Gate; unchanged between game 1.0.20 and 1.0.21, still character version 47):
   file    = [u32 payloadLen][payload][u32 64][sha512(payload)]
   payload ends with:
      build-menu blob (BuildUi.SaveToBinary) = [u32 L][recent pieces: u32 n, n x string][favorites: u32 tagCount, tags, u32 d, d x (string name, u32 k, k x string tag)]

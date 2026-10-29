@@ -96,9 +96,11 @@ The page has the same search under "Find a starting name". It tries every capita
 - It only helps a character that has never tried that item at those levels. After an attempt, the saved seed takes over from the name.
 - The new character has to craft one of that item before it can upgrade it (see the trading section above), so it only suits items the character can make. Crafting does not touch the seeds: in the game code only the save, the load and the upgrade roll use the seed table.
 - It only looks at the first roll per level. It does not model failing on purpose to advance a queue, which [ValheimSaveParser](https://github.com/Melichor/ValheimSaveParser) covers.
-- This has not been tested in game, and it has not been checked which names the game accepts. If you try one, please open an issue with the result.
+- Patch 1.0.21 added rules limiting which names a new character can have, reported by Melichor to affect case; the Forge itself was not changed. A name found here may no longer be creatable. This has not been tested in game, and it has not been checked which names the game accepts. If you try one, please open an issue with the result.
 
-### Save format (version 47, game 1.0.20)
+### Save format (version 47, games 1.0.20 and 1.0.21)
+
+The layout and the Forge code are unchanged in 1.0.21: the save version is still 47, and the Forge roll and seed code is identical in the decompiled game code. Saves written by 1.0.21 parse and match predictions.
 
 ```
 [u32 payloadLength][payload][u32 64][SHA-512 of payload]
@@ -115,13 +117,14 @@ Near the end of the payload is the build-menu blob (the game's `BuildUi.SaveToBi
 - Entering the earlier attempts by hand, with no save loaded, gives the same results as loading the save.
 - A second player's character (not ours) had one stored seed after a single Forge attempt. Starting from `hash(character name) + key` and taking one step gives exactly that stored seed, with a roll of 0.5326 (a success). This confirms the name-based start on a character we did not play.
 - The key and seed layout match the game's decompiled `Player.GetItemUpgradeChance`.
-- The character name detection returned the right name on every save tested.
+- The character name detection returned the right name on every save tested, including a name with an ø.
 
 ## Known limits
 
 - The 0.65 success chance and the "every failure breaks the item" rule come from the game data as extracted by [ValheimSaveParser](https://github.com/Melichor/ValheimSaveParser). Our own attempts only tested the wood idol, but that project's extraction found the same odds on every upgrader item.
 - The built-in item list (271 weapons, armour, shields and tools that can be upgraded) is based on [valheim.tools](https://www.valheim.tools/item-ids), narrowed to the items [ValheimSaveParser](https://github.com/Melichor/ValheimSaveParser) lists as upgradable, in October 2026. It covers names that exist in game version 1.0.20 at that time and may miss newer items. A wrong name gives a plausible but wrong prediction.
-- Name detection looks for the name stored next to your character ID. A character with no crafted items, or with many items crafted by someone else, may need the name entered by hand.
+- Name detection looks for the name stored next to your character ID. Names with letters such as ø or ä are read correctly (older versions of the page skipped them). A character with no crafted items, or with many items crafted by someone else, may need the name entered by hand.
+- Since 1.0.21, not every name can be created for a new character. For a character that has not used the Forge, create it first and load its save, so the name used is the one the game actually stored.
 - The "earlier attempts" boxes depend on you counting correctly. A wrong count shifts every result for that step.
 - Without a save, results are only right for steps the character has not attempted beyond the number you enter.
 - Seeds that do not match a built-in item (levels 1 to 20) are counted as "outside the built-in list", and you can type their internal name to look at them.
