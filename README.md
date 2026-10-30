@@ -91,12 +91,21 @@ python forge_predict.py --item Hammer --level 1 --search
 
 The page has the same search under "Find a starting name". It tries every capitalized name of 3 to 4 letters (about 475,000, a couple of seconds). Tap a result on the page to see that name's next ten upgrades.
 
-- A streak of n in a row turns up in about 0.65^n of names, so 5 in a row is roughly 1 name in 9 and 8 in a row is roughly 1 in 30. Longer streaks need more names tried.
+- Long streaks are much rarer than 0.65^n would suggest, because the rolls for neighbouring levels are not independent. Measured over every 3 to 5 letter name for an Iron Axe starting at level 8: 4 in a row is about 1 name in 15, 5 in a row about 1 in 4,000, 8 in a row about 1 in 250,000, and none reached 9. A single name therefore rarely carries an item more than about 4 to 7 steps.
 - The result is for one item. Another item has a different key, so it needs its own search.
 - It only helps a character that has never tried that item at those levels. After an attempt, the saved seed takes over from the name.
 - The new character has to craft one of that item before it can upgrade it (see the trading section above), so it only suits items the character can make. Crafting does not touch the seeds: in the game code only the save, the load and the upgrade roll use the seed table.
 - It only looks at the first roll per level. It does not model failing on purpose to advance a queue, which [ValheimSaveParser](https://github.com/Melichor/ValheimSaveParser) covers.
 - Patch 1.0.21 added rules limiting which names a new character can have, reported after the patch to affect case; the Forge itself was not changed. A name found here may no longer be creatable. This has not been tested in game, and it has not been checked which names the game accepts. If you try one, please open an issue with the result.
+
+### Planning names for several items (experimental)
+
+Because one name rarely lasts more than a handful of steps, a long climb is split between several characters, each taking the item part of the way before it is moved to the next. The page's "Plan names for several items" section takes up to four rows of item, current level and target level. For each item it finds the fewest characters and a name for each part. Every part is checked by recomputing each roll, and the character counts were compared with an independent brute-force search.
+
+- Tap a name to load its item, starting level and name into the main page and see its results.
+- Each character must craft the item first, must never have upgraded it at those levels, and the game may not accept every name (see below).
+- Longer name lengths (up to 5 letters, slow) find longer parts, so they can reduce the number of characters.
+- Not tested in game.
 
 ### Save format (version 47, games 1.0.20 and 1.0.21)
 

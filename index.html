@@ -59,6 +59,14 @@ input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid 
 .cell b{font-weight:600}.cell small{color:var(--muted);font-size:13px}
 .cell.S b{color:var(--good)}.cell.F b{color:var(--bad)}
 .line.S b{color:var(--good)}.line.F b{color:var(--bad)}.line.M b{color:var(--maybe)}
+.mprow{display:grid;grid-template-columns:minmax(0,1fr) 7ch 7ch;gap:8px;margin:6px 0}
+.mprow input{min-width:0}
+.mphead{display:grid;grid-template-columns:minmax(0,1fr) 7ch 7ch;gap:8px;font-size:13px;color:var(--muted)}
+.mpout{border-top:1px solid var(--line);padding:8px 0}
+.mpout .nm{font:15px var(--mono);margin:2px 8px 2px 0;padding:2px 8px;border:1px solid var(--line);border-radius:4px;background:var(--panel);color:var(--fg);cursor:pointer}
+.mpout .nm:hover,.mpout .nm:focus-visible{border-color:var(--accent);color:var(--accent)}
+.mpseg{margin:6px 0}
+.mpout .nm.first{border-color:var(--accent)}
 .ref{border-top:1px solid var(--line);padding-top:14px}
 .reftools{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
 .reftools input{flex:1 1 200px}
@@ -152,6 +160,20 @@ details p{margin:10px 0;font-size:16px}
     <p class="note" id="fnote" hidden>Tap a name to enter it above and see its upcoming results. Check the game accepts the name when you create the character.</p>
   </details>
 
+    <details class="finder" id="planner">
+    <summary>Plan names for several items (experimental)</summary>
+    <p class="note">One name rarely succeeds more than about 4 to 7 steps in a row, so a long climb is split between several characters: the first takes the item part of the way, then you move it to the next character, and so on. Enter up to four items with their current and target level, and this finds the fewest characters and a name for each part. Not yet tested in game. Each character has to craft the item first and must never have upgraded it at those levels, and the game may not accept every name.</p>
+    <div class="mprows" id="mprows"></div>
+    <div class="row">
+      <label for="mpmax">Name length to try
+        <select id="mpmax"><option value="4" selected>3 to 4 letters (a few seconds)</option><option value="3">3 letters only (instant)</option><option value="5">3 to 5 letters (slow)</option></select>
+      </label>
+    </div>
+    <p><button class="go" id="mpgo" type="button">Find names</button> <span class="note" id="mpprog"></span></p>
+    <div id="mpres"></div>
+    <p class="note" id="mpnote" hidden>Tap a name to enter its item, starting level and name above and see its results. Move the item to the next character when the previous one has reached the end of its part. Check the game accepts each name when you create the character.</p>
+  </details>
+
     <details class="ref" id="ref">
     <summary>Item names and IDs</summary>
     <p class="note">Tap an item to fill in the name above. IDs are case sensitive. Source: <a href="https://www.valheim.tools/item-ids" target="_blank" rel="noopener noreferrer">valheim.tools</a>.</p>
@@ -226,7 +248,7 @@ details p{margin:10px 0;font-size:16px}
       sides=[i-8,i+1+L];
       for(s=0;s<2;s++){
         a=sides[s];
-        if(u[a+4]||u[a+5]||u[a+6]||u[a+7])continue;
+        if(!((u[a+4]|u[a+5]|u[a+6]|u[a+7])===0||(u[a+4]&u[a+5]&u[a+6]&u[a+7])===255))continue;
         if(!(u[a]||u[a+1]||u[a+2]||u[a+3]))continue;
         key=name+"|"+u[a]+"."+u[a+1]+"."+u[a+2]+"."+u[a+3];
         z=seen[key]||(seen[key]={name:name,n:0,pos:i});z.n++;
@@ -443,6 +465,86 @@ details p{margin:10px 0;font-size:16px}
     tick();
   }
   $("fgo").addEventListener("click",finder);
+  (function(){
+    var rowsBox=$("mprows"),busy=false,i;
+    var hd=document.createElement("div");hd.className="mphead";hd.innerHTML="<span>Item (internal name)</span><span>Now</span><span>Target</span>";rowsBox.appendChild(hd);
+    var inputs=[];
+    for(i=0;i<4;i++){
+      var r=document.createElement("div");r.className="mprow";
+      var a=document.createElement("input");a.setAttribute("list","items");a.autocomplete="off";a.spellcheck=false;a.placeholder="e.g. AxeIron";a.setAttribute("aria-label","Item "+(i+1));
+      var b=document.createElement("input");b.type="number";b.min="0";b.max="60";b.inputMode="numeric";b.setAttribute("aria-label","Current level of item "+(i+1));
+      var c=document.createElement("input");c.type="number";c.min="1";c.max="60";c.inputMode="numeric";c.setAttribute("aria-label","Target level of item "+(i+1));
+      r.appendChild(a);r.appendChild(b);r.appendChild(c);rowsBox.appendChild(r);inputs.push({item:a,cur:b,tgt:c});
+    }
+    function nameAt(len,idx){var UP="ABCDEFGHIJKLMNOPQRSTUVWXYZ",LO="abcdefghijklmnopqrstuvwxyz",s="",d;for(d=0;d<len-1;d++){s=LO[idx%26]+s;idx=Math.floor(idx/26);}return UP[idx]+s;}
+    function go(){
+      if(busy)return;
+      var prog=$("mpprog"),res=$("mpres"),maxLen=parseInt($("mpmax").value,10);
+      res.innerHTML="";$("mpnote").hidden=true;
+      var jobs=[],k,n;
+      for(k=0;k<4;k++){
+        var it=inputs[k].item.value.trim(),cu=parseInt(inputs[k].cur.value,10),tg=parseInt(inputs[k].tgt.value,10);
+        if(!it&&isNaN(cu)&&isNaN(tg))continue;
+        if(!it||isNaN(cu)||isNaN(tg)||cu<0||tg<=cu||tg-cu>40){prog.textContent="Row "+(k+1)+": enter an item, its current level and a higher target level (at most 40 steps).";return;}
+        var J={item:it,cur:cu,tgt:tg,steps:tg-cu,keys:[],bestK:[],bestNm:[],ok:[],run:[]};
+        var ih=hash(it);
+        for(n=0;n<J.steps;n++){J.keys.push((ih+cu+1+n)>>>0);J.bestK.push(0);J.bestNm.push("");J.ok.push(false);J.run.push(0);}
+        jobs.push(J);
+      }
+      if(!jobs.length){prog.textContent="Enter at least one item.";return;}
+      var total=0,L,count=[];
+      for(L=3;L<=maxLen;L++){count[L]=Math.pow(26,L);total+=count[L];}
+      var len=3,idx=0,done=0;busy=true;$("mpgo").disabled=true;
+      function tick(){
+        var stopAt=Date.now()+40;
+        while(len<=maxLen&&Date.now()<stopAt){
+          var nm=nameAt(len,idx),hn=hash(nm),j,J,m;
+          for(j=0;j<jobs.length;j++){
+            J=jobs[j];
+            for(m=0;m<J.steps;m++)J.ok[m]=rollNext((hn+J.keys[m])>>>0).roll<=0.65;
+            var r=0;
+            for(m=J.steps-1;m>=0;m--){r=J.ok[m]?r+1:0;if(r>J.bestK[m]){J.bestK[m]=r;J.bestNm[m]=nm;}}
+          }
+          idx++;done++;
+          if(idx>=count[len]){len++;idx=0;}
+        }
+        prog.textContent="Searching… "+Math.floor(done/total*100)+"%";
+        if(len<=maxLen){setTimeout(tick,0);return;}
+        busy=false;$("mpgo").disabled=false;prog.textContent="Checked "+total.toLocaleString()+" names.";
+        jobs.forEach(function(J){
+          var box=document.createElement("div");box.className="mpout";
+          var h=document.createElement("div");h.innerHTML="<b></b> <span class='note'></span>";
+          h.firstChild.textContent=(NAME[J.item]||J.item)+" "+J.cur+" → "+J.tgt;
+          // fewest characters: f[i] = segments needed to finish from step i
+          var f=[],nx=[],i2,jj;
+          f[J.steps]=0;
+          for(i2=J.steps-1;i2>=0;i2--){
+            f[i2]=1e9;nx[i2]=-1;
+            for(jj=Math.min(J.steps,i2+J.bestK[i2]);jj>i2;jj--){if(f[jj]+1<f[i2]){f[i2]=f[jj]+1;nx[i2]=jj;}}
+          }
+          h.lastChild.textContent="("+J.steps+" steps, "+f[0]+" character"+(f[0]===1?"":"s")+")";
+          box.appendChild(h);
+          var s=0,c=1;
+          while(s<J.steps&&nx[s]>0){
+            var e=nx[s],nm2=J.bestNm[s],lvA=J.cur+s,lvB=J.cur+e;
+            var row=document.createElement("div");row.className="mpseg";
+            var lab=document.createElement("span");lab.textContent=c+". ";
+            var bt=document.createElement("button");bt.type="button";bt.className="nm"+(c===1?" first":"");bt.textContent=nm2;
+            bt.title="Show this name's results for the item";
+            (function(nm3,lvA2){bt.addEventListener("click",function(){$("item").value=J.item;$("level").value=lvA2;$("cname").value=nm3;$("nameHint").textContent="(from the name planner)";run();$("out").scrollIntoView({block:"start"});});})(nm2,lvA);
+            var rg=document.createElement("span");rg.className="note";rg.textContent=" level "+lvA+" → "+lvB+" ("+(e-s)+" step"+(e-s===1?"":"s")+")";
+            row.appendChild(lab);row.appendChild(bt);row.appendChild(rg);box.appendChild(row);
+            s=e;c++;
+          }
+          res.appendChild(box);
+        });
+        $("mpnote").hidden=false;
+      }
+      tick();
+    }
+    $("mpgo").addEventListener("click",go);
+  })();
+
   ["item","level","cname","copies"].forEach(function(id){$(id).addEventListener("input",run);});
   run();
 })();
